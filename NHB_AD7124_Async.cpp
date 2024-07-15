@@ -742,6 +742,24 @@ int Ad7124::waitForConvReady(uint32_t timeout)
   }
 }
 
+// checks if a new conversion result is available.
+int Ad7124::checkForConvReady(int startMs)
+{
+  // ret = readRegister(Reg_Status);
+  const int ret = noCheckReadRegister(&regs[Reg_Status]); // Try no check version here, if waiting for conversion, we should be ready for the read [8-26-21]
+  if (ret < 0)
+  {
+    return ret; // Problem, bail and forward the error
+  }
+  if ((millis() - startMs) > timeout)
+  {
+    return AD7124_TIMEOUT; // Time out
+  }
+
+  /* Check the RDY bit in the Status Register */
+  return (regs[Reg_Status].value & AD7124_STATUS_REG_RDY) == 0;
+}
+
 // Writes and reads bytes in data buffer.
 // The received data is stored in the buffer in-place (the old data is replaced with the data received).
 void Ad7124::spiWriteAndRead(uint8_t *data, uint8_t numBytes)
@@ -751,4 +769,134 @@ void Ad7124::spiWriteAndRead(uint8_t *data, uint8_t numBytes)
   spi->transfer(data, numBytes);
   digitalWrite(cs, HIGH);
   spi->endTransaction();
+}
+
+void Ad7124::subscribeChannel(uint8_t ch, uint8_t period)
+{
+  if (ch < AD7124_MAX_CHANNELS)
+  {
+    Subscriptions[ch].ch = ch;
+    Subscriptions[ch].SubPeriod = period;
+  }
+}
+
+double Ad7124::getLastReading(uint8_t ch)
+{
+  if (ch < AD7124_MAX_CHANNELS && Subscriptions[ch].ch == ch)
+  {
+    return Subscriptions[ch].value;
+  }
+  else
+  {
+    return 0;
+  }
+}
+
+void Ad7124::processSubscriptions()
+{
+  static auto startTime = millis();
+  const auto status = checkForConvReady(startTime);
+  if (status == 0) // wait for conversion
+  {
+    return;
+  }
+  else if (status > 0)
+  {
+    Subscriptions[currentSubChannel].value = toVolts(getData(), currentSubChannel);
+  }
+  currentSubChannel = getNextSubscription();
+  startNextReading(currentSubChannel);
+  startTime = millis();
+}
+
+uint8_t Ad7124::getNextSubscription()
+{
+  for (uint8_t i = currentSubChannel + 1; i < AD7124_MAX_CHANNELS; i++)
+  {
+    if (Subscriptions[i].ch == i)
+    {
+      if (Subscriptions[i].SubPeriodState > 1)
+      {
+        Subscriptions[i].SubPeriodState--;
+      }
+      else
+      {
+        Subscriptions[i].SubPeriodState = Subscriptions[i].SubPeriod;
+        return i;
+      }
+    }
+  }
+  for (uint8_t i = 0; i <= currentSubChannel; i++)
+  {
+    if (Subscriptions[i].ch == i)
+    {
+      if (Subscriptions[i].SubPeriodState > 1)
+      {
+        Subscriptions[i].SubPeriodState--;
+      }
+      else
+      {
+        Subscriptions[i].SubPeriodState = Subscriptions[i].SubPeriod;
+        return i;
+      }
+    }
+  }
+  return currentSubChannel;
+}
+
+int Ad7124::startNextReading(uint8_t ch)
+{
+  int ret;
+  uint8_t cur_ch = currentChannel(); // <-- Remember, this only works properly when using Data + Status mode
+
+  if (ch != cur_ch)
+  {
+    // disable previous channel if different
+    ret = enableChannel(cur_ch, false);
+    if (ret < 0)
+    {
+      return ret;
+    }
+
+    // Moved here so only called if channel changed
+    if (mode() == AD7124_OpMode_SingleConv)
+    {
+      ret = enableChannel(ch, true);
+      if (ret < 0)
+      {
+        return ret;
+      }
+
+      // write the mode register again to start the conversion.
+      ret = setMode(AD7124_OpMode_SingleConv);
+      if (ret < 0)
+      {
+        return ret;
+      }
+    }
+    // If in continuous mode, just enable the channel we want to read now
+    else
+    {
+      ret = enableChannel(ch, true);
+      if (ret < 0)
+      {
+        return ret;
+      }
+    }
+  }
+  // If no channel change, just call setMode
+  else
+  {
+    // If we are in single conversion mode, we need to write the mode
+    // register again to start the conversion.
+    if (mode() == AD7124_OpMode_SingleConv)
+    {
+      ret = setMode(AD7124_OpMode_SingleConv);
+      if (ret < 0)
+      {
+        return ret;
+      }
+    }
+  }
+  return true;
 }

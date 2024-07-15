@@ -3,7 +3,7 @@
 #ifndef _NHB_AD7124_Async_H_INCLUDED
 #define _NHB_AD7124_Async_H_INCLUDED
 
-#include <Arduino.h>
+// #include <Arduino.h>
 #include <SPI.h>
 #include "AD_Defs.h"
 #include "Thermocouple.h"
@@ -249,6 +249,14 @@ struct Ad7124_Readings
     uint8_t ch;
 };
 
+struct Ad7124_Subscription
+{
+    double value = 0.0;
+    uint8_t ch = -1;
+    uint8_t SubPeriod = 1; // number of sub cycles between readings, ex 1 reads every time, 2 reads every other time. Avoid using the same value for many to prevent pauses in other subscriptions.
+    uint8_t SubPeriodState = SubPeriod;
+};
+
 class Ad7124;
 
 // Subclass to manage the AD7124 "setups"
@@ -389,11 +397,6 @@ public:
     // Return the current operating mode
     AD7124_OperatingModes mode();
 
-    // Waits until a new conversion result is available.
-    // This would be private, but I made it public in case someone wants
-    // to implement there own synchronized continuous mode function
-    // int waitForConvReady(uint32_t timeout);
-
     // Returns the most recent sample in raw ADC counts with
     // status bits appended (data + status mode)
     // This would be private, but I made it public in case someone wants
@@ -402,7 +405,16 @@ public:
 
     Ad7124Setup setup[8];
 
+    void subscribeChannel(uint8_t ch, uint8_t period);
+    double getLastReading(uint8_t ch);
+    void processSubscriptions();
+
 private:
+    Ad7124_Subscription Subscriptions[16];
+
+    uint8_t getNextSubscription();
+    uint8_t currentSubChannel = 0;
+
     int noCheckReadRegister(Ad7124_Register *reg);
     int noCheckWriteRegister(Ad7124_Register reg);
 
@@ -412,6 +424,9 @@ private:
     int waitForConvReady(uint32_t timeout);
     int waitForSpiReady(uint32_t timeout);
     int waitForPowerOn(uint32_t timeout);
+
+    int checkForConvReady(int startMs);
+    int startNextReading(uint8_t ch);
 
     void updateCRCSetting(void);
     uint8_t computeCRC8(uint8_t *buffer, uint8_t size);
