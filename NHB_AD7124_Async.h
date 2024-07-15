@@ -8,8 +8,8 @@
 #include "AD_Defs.h"
 #include "Thermocouple.h"
 
-#define AD7124_DEFAULT_TIMEOUT_MS 200 // milliseconds
-#define AD7124_MAX_CHANNELS 16        // not sure if this will be used yet
+const auto AD7124_DEFAULT_TIMEOUT_MS = 200; // milliseconds
+const auto AD7124_MAX_CHANNELS = 16;        // not sure if this will be used yet
 
 enum AD7124_OperatingModes
 {
@@ -410,7 +410,7 @@ public:
     void processSubscriptions();
 
 private:
-    Ad7124_Subscription Subscriptions[16];
+    Ad7124_Subscription Subscriptions[AD7124_MAX_CHANNELS];
 
     uint8_t getNextSubscription();
     uint8_t currentSubChannel = 0;

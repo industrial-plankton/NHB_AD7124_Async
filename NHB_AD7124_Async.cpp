@@ -3,16 +3,15 @@
 #include "NHB_AD7124_Async.h"
 
 /* Error codes */
-#define AD7124_INVALID_VAL -1 /* Invalid argument */
-#define AD7124_COMM_ERR -2    /* Communication error on receive */
-#define AD7124_TIMEOUT -3     /* A timeout has occured */
+const auto AD7124_INVALID_VAL = -1; /* Invalid argument */
+const auto AD7124_COMM_ERR = -2;    /* Communication error on receive */
+const auto AD7124_TIMEOUT = -3;     /* A timeout has occured */
 
 // Sets configuration reg values
 int Ad7124Setup::setConfig(AD7124_RefSources ref, AD7124_GainSel gain,
                            bool bipolar, AD7124_BurnoutCurrents burnout,
                            double exRefV)
 {
-
   // Store these away for easy access later (this is a bit redundant, should
   // probably just get values from reg struct when needed)
   setupValues.ref = ref;
@@ -39,7 +38,6 @@ int Ad7124Setup::setFilter(AD7124_Filters filter, uint16_t fs,
                            AD7124_PostFilters postfilter, bool rej60,
                            bool single)
 {
-
   // Store these away for easy access later (this is a bit redundant, should
   // probably just get values from reg struct when needed)
   setupValues.filter = filter;
@@ -63,7 +61,6 @@ int Ad7124Setup::setFilter(AD7124_Filters filter, uint16_t fs,
 // Set offset calibration for a setup
 int Ad7124Setup::setOffsetCal(uint32_t value)
 {
-
   // Store this away for easy access later
   // (this is a bit redundant, should proabably just get values from reg struct when needed)
   setupValues.offsetCoeff = value;
@@ -411,11 +408,9 @@ int Ad7124::enableChannel(uint8_t ch, bool enable)
 {
   if (ch < 16)
   {
-    int ret;
-
     ch += Reg_Channel_0;
 
-    ret = readRegister((AD7124_regIDs)ch); // Is this read necessary?
+    int ret = readRegister((AD7124_regIDs)ch); // Is this read necessary?
     if (ret < 0)
     {
       return ret;
@@ -472,12 +467,10 @@ int Ad7124::currentChannel()
 // checks out, that will be how the library will operate from now on -JJ 5-18-2021
 int32_t Ad7124::getData()
 {
-  int ret;
-
   // Temporary reg struct for data with extra byte to hold status bits
   Ad7124_Register Reg_DataAndStatus{0x02, 0x0000, 4, 2};
 
-  ret = noCheckReadRegister(&Reg_DataAndStatus);
+  int ret = noCheckReadRegister(&Reg_DataAndStatus);
   if (ret < 0)
   {
     return ret;
@@ -611,35 +604,27 @@ int Ad7124::noCheckWriteRegister(Ad7124_Register reg)
 // Read a register, checks if ready first
 int32_t Ad7124::readRegister(AD7124_regIDs id)
 {
-  int ret;
-
   if (regs[id].addr != AD7124_ERR_REG && isReady)
   {
-    ret = waitForSpiReady(timeout);
+    int ret = waitForSpiReady(timeout);
     if (ret < 0)
     {
       return ret;
     }
   }
-  ret = noCheckReadRegister(&regs[id]);
-
-  return ret;
+  return noCheckReadRegister(&regs[id]);
 }
 
 // Write a register, checks if ready first
 int Ad7124::writeRegister(AD7124_regIDs id)
 {
-  int ret;
-
-  ret = waitForSpiReady(timeout);
+  int ret = waitForSpiReady(timeout);
   if (ret < 0)
   {
     return ret;
   }
 
-  ret = noCheckWriteRegister(regs[id]);
-
-  return ret;
+  return noCheckWriteRegister(regs[id]);
 }
 
 // Wait for device to be ready for read or write
