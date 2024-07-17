@@ -253,7 +253,7 @@ struct Ad7124_Subscription
 {
     double value = 0.0;
     uint8_t ch = -1;
-    uint8_t SubPeriod = 1; // number of sub cycles between readings, ex 1 reads every time, 2 reads every other time. Avoid using the same value for many to prevent pauses in other subscriptions.
+    uint8_t SubPeriod = 255; // number of sub cycles between readings, ex 1 reads every time, 2 reads every other time. Avoid using the same value for many to prevent pauses in other subscriptions.
     uint8_t SubPeriodState = SubPeriod;
 };
 

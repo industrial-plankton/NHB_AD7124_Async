@@ -761,7 +761,10 @@ void Ad7124::subscribeChannel(uint8_t ch, uint8_t period)
   if (ch < AD7124_MAX_CHANNELS)
   {
     Subscriptions[ch].ch = ch;
-    Subscriptions[ch].SubPeriod = period;
+    if (period < Subscriptions[ch].SubPeriod)
+    {
+      Subscriptions[ch].SubPeriod = period;
+    }
   }
 }
 
