@@ -790,7 +790,9 @@ void Ad7124::processSubscriptions()
   }
   else if (status > 0)
   {
-    Subscriptions[currentSubChannel].value = toVolts(getData(), currentSubChannel);
+    auto data = getData();
+    Subscriptions[currentSubChannel].value = toVolts(data, currentSubChannel);
+    // Serial.printf("Channel: %d data: %d Value: %f \n", currentSubChannel, data, Subscriptions[currentSubChannel].value);
   }
   currentSubChannel = getNextSubscription();
   startNextReading(currentSubChannel);
